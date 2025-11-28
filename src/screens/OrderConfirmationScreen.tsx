@@ -1,8 +1,23 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import axiosClient from '../api/axiosClient';
+import * as Linking from 'expo-linking';
+
+const navigateToMyTickets = (navigation: any) => {
+  // Reset về màn hình gốc (Stack Home) để xóa lịch sử Back
+  navigation.reset({
+    index: 0,
+    routes: [{ name: 'Home' }], 
+  });
+  
+  // Sau đó chuyển sang Tab "Vé của tôi"
+  // setTimeout để đảm bảo reset xong mới navigate tiếp
+  setTimeout(() => {
+    navigation.navigate('Home', { screen: 'Vé của tôi' });
+  }, 100);
+};
 
 const OrderConfirmationScreen = ({ route, navigation }: any) => {
   // Nhận thêm productName và duration từ màn hình trước
@@ -31,41 +46,128 @@ const OrderConfirmationScreen = ({ route, navigation }: any) => {
     ? 'Đi không giới hạn số lượt trong thời hạn vé' 
     : 'Vé chỉ sử dụng cho 01 lượt đi';
 
-  const handlePayment = async () => {
+    useEffect(() => {
+      const handleDeepLink = (event: { url: string }) => {
+        const { url } = event;
+        console.log("App received Deep Link:", url);
+  
+        // TH1: Thành công (PayOS redirect thẳng về)
+        if (url.includes('payment-result') || url.includes('payment-success')) {
+          setProcessing(false);
+          // Chuyển hướng về trang Vé và reset stack để user không back lại màn hình này được
+          Alert.alert("Thanh toán thành công", "Vé đã được thêm vào ví của bạn.", [
+            { 
+              text: "Xem vé", 
+              onPress: () => navigateToMyTickets(navigation) // Gọi hàm điều hướng mới
+            }
+          ]);
+        }
+        
+        // TH2: Hủy (Backend redirect về sau khi update DB)
+        if (url.includes('payment-cancel')) {
+          setProcessing(false);
+          Alert.alert("Đã hủy", "Giao dịch đã bị hủy. Vé không được tạo.");
+        }
+      };
+  
+      const subscription = Linking.addEventListener('url', handleDeepLink);
+  
+      // Kiểm tra xem App có được mở từ link không 
+      Linking.getInitialURL().then((url) => {
+        if (url) handleDeepLink({ url });
+      });
+  
+      return () => {
+        subscription.remove();
+      };
+    }, []);
+
+  // --- HÀM CHUNG: TẠO VÉ TRONG DATABASE ---
+  const createTicketInDatabase = async () => {
+    let res: any;
+    if (ticketType === 'SINGLE') {
+      res = await axiosClient.post('/tickets/single', {
+        line_code: 'L1',
+        from_station: fromStation.code,
+        to_station: toStation.code,
+        stops: Math.abs(toStation.order_index - fromStation.order_index), 
+        final_price: price, 
+        promo_code: null
+      });
+    } else {
+      res = await axiosClient.post('/tickets/pass', {
+        product_code: productCode,
+        promo_code: null
+      });
+    }
+
+    // Lấy ID vé từ response (Lưu ý đúng cấu trúc data.data.ticket)
+    const ticketId = res.data?.ticket?.ticket_id;
+    if (!ticketId) throw new Error("Không lấy được ID vé từ hệ thống");
+    
+    return ticketId;
+  };
+
+  // --- CÁCH 1: THANH TOÁN PAYOS (REAL) ---
+  const handlePaymentPayOS = async () => {
+    if (processing) return;
     setProcessing(true);
     try {
-      let ticketId;
+      // 1. Tạo vé
+      const ticketId = await createTicketInDatabase();
 
-      if (ticketType === 'SINGLE') {
-        const stops = Math.abs(toStation.order_index - fromStation.order_index);
-        const res: any = await axiosClient.post('/tickets/single', {
-          line_code: 'L1',
-          from_station: fromStation.code,
-          to_station: toStation.code,
-          stops: stops,
-          final_price: price,
-          promo_code: null
-        });
-        ticketId = res.data.ticket.ticket_id;
-      } else {
-        const res: any = await axiosClient.post('/tickets/pass', {
-          product_code: productCode,
-          promo_code: null
-        });
-        ticketId = res.data.ticket.ticket_id;
+      // 2. Tạo Deep Link
+      const successLink = Linking.createURL('payment-result');
+      const cancelLink  = Linking.createURL('payment-cancel');
+      
+      console.log("Success Link:", successLink);
+      console.log("Cancel Link:", cancelLink);
+
+      // 3. Lấy link thanh toán (Gửi kèm returnUrl)
+      const payRes: any = await axiosClient.post('/payments/create', {
+        ticket_id: ticketId,
+        method: 'PAYOS',
+        returnUrl: successLink, // Link khi thành công
+        cancelUrl: cancelLink   // Link khi hủy
+      });
+      const { checkoutUrl } = payRes;
+
+      // 4. Mở trình duyệt
+      if (checkoutUrl) {
+        const supported = await Linking.canOpenURL(checkoutUrl);
+        if (supported) {
+          await Linking.openURL(checkoutUrl);
+        }
       }
+    } catch (error: any) {
+      Alert.alert("Lỗi PayOS", error.response?.data?.message || error.message || "Lỗi kết nối");
+    } finally {
+      setProcessing(false);
+    }
+  };
 
+  // --- CÁCH 2: THANH TOÁN DEMO (TEST NHANH) ---
+  const handlePaymentDemo = async () => {
+    if (processing) return;
+    setProcessing(true);
+    try {
+      // 1. Tạo vé
+      const ticketId = await createTicketInDatabase();
+
+      // 2. Gọi API Demo (Thành công ngay)
       await axiosClient.post('/payments/create-demo', {
         ticket_id: ticketId,
-        method: 'BANK_TRANSFER'
+        method: 'DEMO_WALLET' 
       });
 
+      // 3. Chuyển trang thành công ngay lập tức
       navigation.replace('PaymentSuccess', { 
-        ticketType, fromStation, toStation, price, time: new Date().toLocaleString() 
+         ticketType, fromStation, toStation, price, time: new Date().toLocaleString() 
       });
 
     } catch (error: any) {
-      Alert.alert("Lỗi", "Không thể tạo đơn hàng. Vui lòng thử lại.");
+      console.error("Demo Error", error);
+      Alert.alert("Lỗi Demo", error.response?.data?.message || error.message || "Không thể tạo thanh toán demo");
     } finally {
       setProcessing(false);
     }
@@ -131,10 +233,17 @@ const OrderConfirmationScreen = ({ route, navigation }: any) => {
          <Text style={styles.footerNote}>Bằng việc bấm thanh toán, bạn đồng ý với điều khoản của Metro</Text>
          <TouchableOpacity 
             style={styles.payButton} 
-            onPress={handlePayment}
+            onPress={handlePaymentPayOS}
             disabled={processing}
          >
             {processing ? <ActivityIndicator color="white" /> : <Text style={styles.payButtonText}>Thanh toán: {price.toLocaleString()}đ</Text>}
+         </TouchableOpacity>
+         <TouchableOpacity 
+            style={styles.payButton} 
+            onPress={handlePaymentDemo}
+            disabled={processing}
+         >
+            {processing ? <ActivityIndicator color="white" /> : <Text style={styles.payButtonText}>Thanh toán: {price.toLocaleString()}đ (DEMO)</Text>}
          </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -155,7 +264,7 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: '#eee', marginVertical: 10 },
   footer: { padding: 16, backgroundColor: 'white', borderTopWidth: 1, borderColor: '#eee' },
   footerNote: { fontSize: 12, color: '#008DDA', textAlign: 'center', marginBottom: 10 },
-  payButton: { backgroundColor: '#333', borderRadius: 25, paddingVertical: 15, alignItems: 'center' },
+  payButton: { backgroundColor: '#333', borderRadius: 25, paddingVertical: 15, alignItems: 'center', margin: 10 },
   payButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold' }
 });
 

@@ -16,6 +16,7 @@ import OrderConfirmationScreen from '../screens/OrderConfirmationScreen';
 import PaymentSuccessScreen from '../screens/PaymentSuccessScreen';
 import FeedbackScreen from '../screens/FeedbackScreen';
 import TicketInfoScreen from '../screens/TicketInfoScreen';
+import MetroMapScreen from '../screens/MetroMapScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -61,6 +62,7 @@ export default function AppNavigator() {
           <Stack.Screen name="OrderConfirmation" component={OrderConfirmationScreen} />
           <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
           <Stack.Screen name="SingleTicketSelection" component={SingleTicketSelectionScreen} />
+          <Stack.Screen name="MetroMap" component={MetroMapScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

@@ -63,6 +63,7 @@ const HomeScreen = ({ navigation }: any) => {
     
     // 👇 CHUYỂN TRANG THÔNG TIN VÉ
     else if (id === 4) navigation.navigate('TicketInfoScreen');
+    else if (id === 5) navigation.navigate('MetroMap');
   };
 
   const handleOpenNews = (item: any) => {

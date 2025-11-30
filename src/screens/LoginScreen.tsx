@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Alert, 
-  ActivityIndicator, 
-  KeyboardAvoidingView, 
-  Platform 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
@@ -17,9 +17,9 @@ import { Ionicons } from '@expo/vector-icons';
 
 const LoginScreen = ({ navigation }: any) => {
   // Đổi default sang tài khoản Customer để bạn đỡ phải gõ lại khi test
-  const [email, setEmail] = useState('customer@metro.local'); 
+  const [email, setEmail] = useState('customer@metro.local');
   const [password, setPassword] = useState('customer123');
-  
+
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -40,7 +40,7 @@ const LoginScreen = ({ navigation }: any) => {
         // --- ⛔ PHÂN QUYỀN: CHẶN ADMIN ⛔ ---
         if (role === 'ADMIN') {
           Alert.alert(
-            'Truy cập bị từ chối', 
+            'Truy cập bị từ chối',
             'Tài khoản ADMIN chỉ được phép sử dụng trên trang Web Quản trị.\nVui lòng sử dụng tài khoản Khách hàng.'
           );
           setLoading(false);
@@ -53,8 +53,8 @@ const LoginScreen = ({ navigation }: any) => {
         await SecureStore.setItemAsync('user_info', JSON.stringify(res.user));
 
         Alert.alert('Thành công', `Xin chào ${res.user.display_name}!`);
-        
-        navigation.replace('Home'); 
+
+        navigation.replace('Home');
       } else {
         Alert.alert('Đăng nhập thất bại', 'Tài khoản hoặc mật khẩu không đúng');
       }
@@ -68,8 +68,8 @@ const LoginScreen = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.inner}
       >
         {/* --- PHẦN LOGO --- */}
@@ -114,12 +114,14 @@ const LoginScreen = ({ navigation }: any) => {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.forgotPassBtn}>
-            <Text style={styles.forgotPassText}>Quên mật khẩu?</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+            <Text style={{ color: '#0056b3', fontSize: 13, fontWeight: '500' }}>
+              Quên mật khẩu?
+            </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.loginBtn} 
+          <TouchableOpacity
+            style={styles.loginBtn}
             onPress={handleLogin}
             disabled={loading}
           >
@@ -133,10 +135,10 @@ const LoginScreen = ({ navigation }: any) => {
         </View>
 
         <View style={styles.footer}>
-           <Text style={styles.footerText}>Bạn chưa có tài khoản? </Text>
-           <TouchableOpacity>
-             <Text style={styles.signupText}>Đăng ký ngay</Text>
-           </TouchableOpacity>
+          <Text style={styles.footerText}>Bạn chưa có tài khoản? </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+            <Text>Đăng ký tài khoản</Text>
+          </TouchableOpacity>
         </View>
 
       </KeyboardAvoidingView>

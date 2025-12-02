@@ -49,7 +49,6 @@ const OrderConfirmationScreen = ({ route, navigation }: any) => {
     useEffect(() => {
       const handleDeepLink = (event: { url: string }) => {
         const { url } = event;
-        console.log("App received Deep Link:", url);
   
         // TH1: Thành công (PayOS redirect thẳng về)
         if (url.includes('payment-result') || url.includes('payment-success')) {

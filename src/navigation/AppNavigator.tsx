@@ -17,6 +17,7 @@ import PaymentSuccessScreen from '../screens/PaymentSuccessScreen';
 import FeedbackScreen from '../screens/FeedbackScreen';
 import TicketInfoScreen from '../screens/TicketInfoScreen';
 import MetroMapScreen from '../screens/MetroMapScreen';
+import RedeemScreen from '../screens/RedeemScreen'; // <--- Import file vừa tạo
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -63,6 +64,11 @@ export default function AppNavigator() {
           <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
           <Stack.Screen name="SingleTicketSelection" component={SingleTicketSelectionScreen} />
           <Stack.Screen name="MetroMap" component={MetroMapScreen} />
+          <Stack.Screen 
+            name="Redeem" 
+            component={RedeemScreen} 
+            options={{ headerShown: false }} // Ẩn header mặc định vì mình đã tự custom header
+          />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

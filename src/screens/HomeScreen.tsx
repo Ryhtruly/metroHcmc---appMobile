@@ -60,8 +60,7 @@ const HomeScreen = ({ navigation }: any) => {
     if (id === 1) navigation.navigate('BuyTicket'); // Mua vé
     else if (id === 2) navigation.navigate('Home', { screen: 'Vé của tôi' });
     else if (id === 8) navigation.navigate('Home', { screen: 'Tài khoản' });
-    
-    // 👇 CHUYỂN TRANG THÔNG TIN VÉ
+    else if (id === 3) navigation.navigate('Redeem'); 
     else if (id === 4) navigation.navigate('TicketInfoScreen');
     else if (id === 5) navigation.navigate('MetroMap');
   };

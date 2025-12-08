@@ -6,7 +6,7 @@ import AppNavigator from './src/navigation/AppNavigator'; // Gọi file cấu h�
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AppNavigator />
+      <AppNavigator /> 
     </SafeAreaProvider>
   );
 }

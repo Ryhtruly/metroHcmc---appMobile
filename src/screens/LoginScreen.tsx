@@ -132,6 +132,16 @@ const LoginScreen = ({ navigation }: any) => {
             )}
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={[styles.loginBtn, { backgroundColor: '#28a745', marginTop: 10 }]}
+            onPress={() => navigation.navigate('FaceLogin')}
+          >
+            <View style={{flexDirection: 'row', alignItems: 'center'}}>
+              <Ionicons name="scan-outline" size={20} color="white" style={{marginRight: 8}} />
+              <Text style={styles.loginBtnText}>ĐĂNG NHẬP FACE ID</Text>
+            </View>
+          </TouchableOpacity>
+
         </View>
 
         <View style={styles.footer}>

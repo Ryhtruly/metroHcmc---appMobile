@@ -17,9 +17,9 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native'; 
 import axiosClient from '../api/axiosClient';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from '@react-native-community/datetimepicker'; 
 
 const AccountScreen = ({ navigation }: any) => {
   const [user, setUser] = useState<any>(null);
@@ -328,6 +328,11 @@ const AccountScreen = ({ navigation }: any) => {
                   ? new Date(user.created_at).toLocaleDateString('vi-VN')
                   : '---'
               }
+            />
+            <MenuRow
+              icon="scan-outline"
+              title="Đăng ký khuôn mặt (Face ID)"
+              onPress={() => navigation.navigate('FaceRegister')}
             />
 
             <MenuRow

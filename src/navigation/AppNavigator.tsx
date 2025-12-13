@@ -33,7 +33,7 @@ function MainTabs() {
         headerShown: false,
         tabBarActiveTintColor: '#0056b3',
         tabBarInactiveTintColor: '#999',
-        tabBarStyle: { height: 65, paddingBottom: 10, paddingTop: 10 },
+        tabBarStyle: { height: 85, paddingBottom: 10, paddingTop: 10 },
         tabBarLabelStyle: { fontSize: 12, fontWeight: '500', marginTop: 4 },
         tabBarIcon: ({ focused, color }) => {
           if (route.name === 'Trang chủ') {

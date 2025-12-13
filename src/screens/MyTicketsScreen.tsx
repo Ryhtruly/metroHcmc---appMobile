@@ -22,7 +22,8 @@ const MyTicketsScreen = () => {
       if (res.data?.tickets) {
         const all = res.data.tickets;
         const filtered = all.filter((t: any) => {
-          if (activeTab === 0) return t.status === 'ACTIVE' || t.status === 'NEW';
+          if (activeTab === 0) return t.status === 'ACTIVE' || t.status === 'IN_TRANSIT';
+          if (activeTab === 1) return t.status === 'NEW'
           return t.status === 'USED' || t.status === 'EXPIRED';
         });
         setTickets(filtered);
@@ -41,9 +42,29 @@ const MyTicketsScreen = () => {
   );
 
   const handlePressTicket = (ticket: any) => {
-    setSelectedTicket(ticket);
+    setSelectedTicket(ticket);    
     setDetailTab('QR');
   };
+
+  const STATIONS: { [key: string]: string } = {
+    "L1-01": "Bến Thành",
+    "L1-02": "Nhà hát TP",
+    "L1-03": "Ba Son",
+    "L1-04": "Công viên Văn Thánh",
+    "L1-05": "Tân Cảng",
+    "L1-06": "Thảo Điền",
+    "L1-07": "An Phú",
+    "L1-08": "Rạch Chiếc",
+    "L1-09": "Phước Long",
+    "L1-10": "Bình Thái",
+    "L1-11": "Thủ Đức",
+    "L1-12": "Khu Công nghệ cao",
+    "L1-13": "Đại học Quốc gia",
+    "L1-14": "Suối Tiên"
+  };
+  
+  // Hàm chuyển đổi: Nếu có trong list thì lấy tên, không thì giữ nguyên mã
+  const getStationName = (code: string) => STATIONS[code] || code;
 
   const renderTicket = ({ item }: any) => {
     const isPass = item.type !== 'single_ride';
@@ -68,6 +89,11 @@ const MyTicketsScreen = () => {
         </View>
         <View style={{ flex: 1, marginLeft: 15 }}>
            <Text style={styles.ticketName}>{item.product_name}</Text>
+           {!isPass && (
+            <Text style={{ fontSize: 12, color: isNew ? '#00C853' : '#666', fontWeight: isNew?'bold':'normal' }}>
+              {getStationName(item.from_station)} - {getStationName(item.to_station)}
+            </Text>
+           )}
            <Text style={{ fontSize: 12, color: isNew ? '#00C853' : '#666', fontWeight: isNew?'bold':'normal' }}>
              {statusText}
            </Text>
@@ -129,6 +155,12 @@ const MyTicketsScreen = () => {
           <View style={styles.infoView}>
             <InfoRow label="Loại vé" value={isPass ? 'Vé trọn gói (Pass)' : 'Vé lượt (Single)'} />
             <InfoRow label="Tên vé" value={selectedTicket.product_name} />
+            {!isPass && (
+              <View>
+                <InfoRow label="Ga đi" value={getStationName(selectedTicket.from_station)} />
+                <InfoRow label="Ga đến" value={getStationName(selectedTicket.to_station)} />
+              </View>
+            )}
             <InfoRow label="Giá vé" value={`${parseInt(selectedTicket.final_price).toLocaleString()} đ`} />
             <View style={styles.divider} />
             <InfoRow label="Ngày mua" value={formatFullDate(selectedTicket.created_at)} />
@@ -172,7 +204,10 @@ const MyTicketsScreen = () => {
               <Text style={[styles.tabText, activeTab === 0 && styles.activeTabText]}>Đang sử dụng</Text>
            </TouchableOpacity>
            <TouchableOpacity style={[styles.tabBtn, activeTab === 1 && styles.activeTabBtn]} onPress={() => setActiveTab(1)}>
-              <Text style={[styles.tabText, activeTab === 1 && styles.activeTabText]}>Lịch sử</Text>
+              <Text style={[styles.tabText, activeTab === 1 && styles.activeTabText]}>Chưa sử dụng</Text>
+           </TouchableOpacity>
+           <TouchableOpacity style={[styles.tabBtn, activeTab === 2 && styles.activeTabBtn]} onPress={() => setActiveTab(2)}>
+              <Text style={[styles.tabText, activeTab === 2 && styles.activeTabText]}>Lịch sử</Text>
            </TouchableOpacity>
         </View>
       </View>

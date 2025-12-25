@@ -1,130 +1,174 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
-
-// 👇 DÙNG CHUẨN MỚI NHẤT (Không legacy, không lỗi import)
-import { CameraView, useCameraPermissions } from 'expo-camera'; 
-
+import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as FaceDetector from 'expo-face-detector';
 import * as ImageManipulator from 'expo-image-manipulator';
+import { Ionicons } from '@expo/vector-icons';
 import axiosClient from '../api/axiosClient';
 import * as SecureStore from 'expo-secure-store';
-import { Ionicons } from '@expo/vector-icons';
+
+// Định nghĩa các bước thử thách
+const STEPS = [
+  { 
+    id: 'CENTER', 
+    text: '😐 Nhìn thẳng', 
+    check: (face: any) => {
+      // @ts-ignore: Bỏ qua lỗi check type
+      return Math.abs(face.yawAngle) < 10 && Math.abs(face.pitchAngle) < 10;
+    }
+  },
+  { 
+    id: 'LEFT',   
+    text: '⬅️ Quay sang TRÁI', 
+    check: (face: any) => {
+      // @ts-ignore
+      return face.yawAngle > 15;
+    }
+  },  
+  { 
+    id: 'RIGHT',  
+    text: '➡️ Quay sang PHẢI', 
+    check: (face: any) => {
+      // @ts-ignore
+      return face.yawAngle < -15;
+    }
+  }, 
+  { 
+    id: 'UP',     
+    text: '⬆️ Ngước lên trên', 
+    check: (face: any) => {
+      // @ts-ignore
+      return face.pitchAngle < -10;
+    }
+  }, 
+];
 
 export default function FaceRegisterScreen({ navigation }: any) {
   const [permission, requestPermission] = useCameraPermissions();
-  const [images, setImages] = useState<any[]>([]); 
-  const [loading, setLoading] = useState(false);
+  const [stepIndex, setStepIndex] = useState(0);
+  const [capturedImages, setCapturedImages] = useState<any[]>([]);
+  const [isScanning, setIsScanning] = useState(false);
   const cameraRef = useRef<any>(null);
 
+  // Vòng lặp quét liên tục
   useEffect(() => {
-    if (!permission?.granted) requestPermission();
-  }, []);
-
-  // Hàm chụp ảnh (Thủ công)
-  const takePicture = async () => {
-    if (cameraRef.current && !loading) {
-      setLoading(true);
+    let interval: NodeJS.Timeout;
+    
+    const scanFace = async () => {
+      if (!cameraRef.current || isScanning || stepIndex >= STEPS.length) return;
+      
+      setIsScanning(true);
       try {
-        const photoData = await cameraRef.current.takePictureAsync({ quality: 0.5, skipProcessing: true });
-        
-        const manipResult = await ImageManipulator.manipulateAsync(
-          photoData.uri,
-          [{ resize: { width: 600 } }],
-          { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
-        );
-
-        // Lưu ảnh vào mảng
-        const newImages = [...images, manipResult];
-        setImages(newImages);
-
-        if (newImages.length < 3) {
-          Alert.alert("Đã chụp", `Được ${newImages.length}/3 ảnh. Hãy xoay mặt và chụp tiếp!`);
-          setLoading(false);
-        } else {
-          // Đủ 3 ảnh -> Gửi
-          uploadImages(newImages);
-        }
-
-      } catch (error) {
-        Alert.alert('Lỗi', 'Không chụp được ảnh');
-        setLoading(false);
-      }
-    }
-  };
-
-  const uploadImages = async (finalImages: any[]) => {
-    try {
-      const userInfoStr = await SecureStore.getItemAsync('user_info');
-      const userInfo = userInfoStr ? JSON.parse(userInfoStr) : null;
-      if (!userInfo) return;
-
-      const formData = new FormData();
-      formData.append('user_id', userInfo.user_id);
-
-      finalImages.forEach((img, index) => {
-        // @ts-ignore
-        formData.append('face_images', {
-          uri: img.uri, type: 'image/jpeg', name: `face_${index}.jpg`
+        const photo = await cameraRef.current.takePictureAsync({ 
+          quality: 0.3, 
+          skipProcessing: true, 
+          base64: false 
         });
-      });
 
-      const res: any = await axiosClient.post('/auth/register-face', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+        const result = await FaceDetector.detectFacesAsync(photo.uri, {
+          mode: FaceDetector.FaceDetectorMode.fast,
+          detectLandmarks: FaceDetector.FaceDetectorLandmarks.none,
+          runClassifications: FaceDetector.FaceDetectorClassifications.none,
+          minDetectionInterval: 0,
+          tracking: false,
+        });
 
-      if (res.success) {
-        Alert.alert('Thành công', 'Đăng ký hoàn tất!', [{ text: 'OK', onPress: () => navigation.goBack() }]);
-      } else {
-        Alert.alert('Lỗi', res.message);
-        setImages([]); 
+        if (result.faces.length > 0) {
+          // 🔥 FIX LỖI Ở ĐÂY: Ép kiểu 'as any' để lấy pitchAngle thoải mái
+          const face = result.faces[0] as any; 
+          const currentRule = STEPS[stepIndex];
+
+          // Dòng này sẽ hết báo đỏ
+          console.log(`Góc mặt: Yaw=${face.yawAngle}, Pitch=${face.pitchAngle}`);
+
+          if (currentRule.check(face)) {
+            const goodPhoto = await ImageManipulator.manipulateAsync(
+              photo.uri, 
+              [{ resize: { width: 600 } }], 
+              { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+            );
+
+            setCapturedImages(prev => [...prev, goodPhoto]);
+            
+            if (stepIndex < STEPS.length - 1) {
+              setStepIndex(prev => prev + 1);
+            } else {
+              handleUpload([...capturedImages, goodPhoto]);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.log("Lỗi scan:", err);
+      } finally {
+        setTimeout(() => setIsScanning(false), 500); 
       }
+    };
+
+    if (permission?.granted && stepIndex < STEPS.length) {
+      interval = setInterval(scanFace, 800);
+    }
+
+    return () => clearInterval(interval);
+  }, [stepIndex, permission, isScanning]);
+
+  const handleUpload = async (finalImages: any[]) => {
+    try {
+        const userInfoStr = await SecureStore.getItemAsync('user_info');
+        const userInfo = userInfoStr ? JSON.parse(userInfoStr) : null;
+        if (!userInfo) return;
+  
+        const formData = new FormData();
+        formData.append('user_id', userInfo.user_id);
+  
+        finalImages.forEach((img, index) => {
+          // @ts-ignore
+          formData.append('face_images', {
+            uri: img.uri, type: 'image/jpeg', name: `face_${index}.jpg`
+          });
+        });
+  
+        const res: any = await axiosClient.post('/auth/register-face', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+  
+        if (res.success) {
+          Alert.alert('Thành công', 'Đã đăng ký khuôn mặt!', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+        } else {
+          Alert.alert('Lỗi', res.message);
+          setStepIndex(0); setCapturedImages([]); // Reset làm lại
+        }
     } catch (error) {
-      Alert.alert('Lỗi', 'Không thể kết nối server');
-      setImages([]);
-    } finally {
-      setLoading(false);
+        Alert.alert('Lỗi', 'Không thể kết nối server');
+        setStepIndex(0); setCapturedImages([]);
     }
   };
 
-  if (!permission) return <View />;
-  if (!permission.granted) {
+  if (!permission?.granted) {
     return (
-      <View style={styles.container}>
-        <Text style={{color: 'white', textAlign: 'center'}}>Cần quyền Camera</Text>
-        <TouchableOpacity onPress={requestPermission} style={styles.btn}><Text>Cấp quyền</Text></TouchableOpacity>
-      </View>
+        <View style={styles.center}>
+            <Text>Cần quyền Camera</Text>
+            <TouchableOpacity onPress={requestPermission}><Text style={{color:'blue'}}>Cấp quyền</Text></TouchableOpacity>
+        </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* 👇 DÙNG CAMERAVIEW (Chuẩn mới) */}
-      <CameraView 
-        style={styles.camera} 
-        facing="front"
-        ref={cameraRef}
-      >
+      <CameraView style={styles.camera} facing="front" ref={cameraRef}>
         <View style={styles.overlay}>
-          <View style={styles.faceFrame} />
+          {/* Khung mặt */}
+          <View style={[styles.faceFrame, { borderColor: stepIndex >= STEPS.length ? '#00ff00' : 'white' }]} />
           
+          {/* Hướng dẫn */}
           <View style={styles.instructionBox}>
-            <Text style={styles.bigText}>
-              {images.length === 0 ? "Nhìn Thẳng" : images.length === 1 ? "Quay Trái" : "Quay Phải"}
-            </Text>
-            <Text style={styles.smallText}>
-              {images.length}/3 Ảnh - Bấm nút để chụp
+            <Text style={styles.stepText}>Bước {stepIndex + 1}/4</Text>
+            <Text style={styles.actionText}>
+                {stepIndex < STEPS.length ? STEPS[stepIndex].text : "✅ Đang xử lý..."}
             </Text>
           </View>
-
-          {loading ? (
-            <ActivityIndicator size="large" color="#00ff00" style={{ marginBottom: 40 }} />
-          ) : (
-            <TouchableOpacity style={styles.captureBtn} onPress={takePicture}>
-              <View style={styles.captureInner} />
-            </TouchableOpacity>
-          )}
         </View>
       </CameraView>
-
       <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()}>
         <Ionicons name="close" size={30} color="white" />
       </TouchableOpacity>
@@ -133,15 +177,13 @@ export default function FaceRegisterScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
+  container: { flex: 1, backgroundColor: 'black' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   camera: { flex: 1 },
-  overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 50 },
-  faceFrame: { position: 'absolute', top: '20%', width: 280, height: 280, borderRadius: 140, borderWidth: 4, borderColor: '#fff' },
-  instructionBox: { position: 'absolute', top: '60%', alignItems: 'center' },
-  bigText: { fontSize: 32, fontWeight: 'bold', color: '#fff', marginBottom: 8 },
-  smallText: { fontSize: 16, color: '#eee' },
-  captureBtn: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
-  captureInner: { width: 70, height: 70, borderRadius: 35, borderWidth: 2, borderColor: '#000' },
-  closeBtn: { position: 'absolute', top: 50, right: 20 },
-  btn: { padding: 10, backgroundColor: 'white' }
+  overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
+  faceFrame: { width: 300, height: 400, borderRadius: 150, borderWidth: 4, marginBottom: 50 },
+  instructionBox: { position: 'absolute', bottom: 80, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)', padding: 20, borderRadius: 15 },
+  stepText: { color: '#bbb', fontSize: 16, marginBottom: 5 },
+  actionText: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
+  closeBtn: { position: 'absolute', top: 50, right: 20 }
 });

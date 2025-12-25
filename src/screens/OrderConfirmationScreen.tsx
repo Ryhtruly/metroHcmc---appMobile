@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import axiosClient from '../api/axiosClient';
@@ -24,6 +24,11 @@ const OrderConfirmationScreen = ({ route, navigation }: any) => {
   const { ticketType, fromStation, toStation, price, productCode, productName, duration } = route.params;
   const [processing, setProcessing] = useState(false);
 
+  const [promoCode, setPromoCode] = useState('');       // Mã người dùng nhập
+  const [appliedCode, setAppliedCode] = useState('');   // Mã đã áp dụng thành công
+  const [discountAmount, setDiscountAmount] = useState(0); // Số tiền được giảm
+  const [checkingPromo, setCheckingPromo] = useState(false); // Loading khi check mã
+
   // --- LOGIC HIỂN THỊ ---
   const isPass = ticketType === 'PASS';
   
@@ -46,40 +51,96 @@ const OrderConfirmationScreen = ({ route, navigation }: any) => {
     ? 'Đi không giới hạn số lượt trong thời hạn vé' 
     : 'Vé chỉ sử dụng cho 01 lượt đi';
 
-    useEffect(() => {
-      const handleDeepLink = (event: { url: string }) => {
-        const { url } = event;
-  
-        // TH1: Thành công (PayOS redirect thẳng về)
-        if (url.includes('payment-result') || url.includes('payment-success')) {
-          setProcessing(false);
-          // Chuyển hướng về trang Vé và reset stack để user không back lại màn hình này được
-          Alert.alert("Thanh toán thành công", "Vé đã được thêm vào ví của bạn.", [
-            { 
-              text: "Xem vé", 
-              onPress: () => navigateToMyTickets(navigation) // Gọi hàm điều hướng mới
-            }
-          ]);
-        }
-        
-        // TH2: Hủy (Backend redirect về sau khi update DB)
-        if (url.includes('payment-cancel')) {
-          setProcessing(false);
-          Alert.alert("Đã hủy", "Giao dịch đã bị hủy. Vé không được tạo.");
-        }
-      };
-  
-      const subscription = Linking.addEventListener('url', handleDeepLink);
-  
-      // Kiểm tra xem App có được mở từ link không 
-      Linking.getInitialURL().then((url) => {
-        if (url) handleDeepLink({ url });
+  const finalPrice = Math.max(0, price - discountAmount);
+  const handleCheckPromo = async () => {
+    // 1. Validate đầu vào
+    if (!promoCode.trim()) {
+      Alert.alert("Thông báo", "Vui lòng nhập mã khuyến mãi");
+      return;
+    }
+
+    setCheckingPromo(true);
+
+    try {
+      // 2. Gọi API kiểm tra mã
+      // Body gửi lên: { code: "...", original_price: 50000 }
+      const res: any = await axiosClient.post('/promo/check', { 
+        code: promoCode,
+        original_price: price // Giá vé gốc
       });
-  
-      return () => {
-        subscription.remove();
-      };
-    }, []);
+
+      // 3. Xử lý kết quả thành công
+      if (res.success) {
+        const { discount, description } = res.data;
+        
+        setDiscountAmount(Number(discount)); // Cập nhật số tiền giảm
+        setAppliedCode(promoCode);           // Lưu mã đã áp dụng
+        
+        Alert.alert(
+          "Áp dụng thành công", 
+          `${description || 'Mã hợp lệ'}\nBạn được giảm: ${Number(discount).toLocaleString()}đ`
+        );
+      } else {
+        // Trường hợp API trả về 200 nhưng success: false (ít gặp nếu backend chuẩn)
+        throw new Error(res.message || "Mã không hợp lệ");
+      }
+
+    } catch (error: any) {
+      // console.error("Check Promo Error:", error);
+      
+      // 4. Xử lý lỗi (Lấy message từ Backend trả về)
+      const errorMsg = error.response?.data?.message || "Mã khuyến mãi không tồn tại hoặc không đủ điều kiện.";
+      
+      Alert.alert("Không thể áp dụng", errorMsg);
+      
+      // Reset lại nếu lỗi
+      setDiscountAmount(0);
+      setAppliedCode('');
+    } finally {
+      setCheckingPromo(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedCode('');
+    setDiscountAmount(0);
+    setPromoCode('');
+  };
+
+  useEffect(() => {
+    const handleDeepLink = (event: { url: string }) => {
+      const { url } = event;
+
+      // TH1: Thành công (PayOS redirect thẳng về)
+      if (url.includes('payment-result') || url.includes('payment-success')) {
+        setProcessing(false);
+        // Chuyển hướng về trang Vé và reset stack để user không back lại màn hình này được
+        Alert.alert("Thanh toán thành công", "Vé đã được thêm vào ví của bạn.", [
+          { 
+            text: "Xem vé", 
+            onPress: () => navigateToMyTickets(navigation) // Gọi hàm điều hướng mới
+          }
+        ]);
+      }
+      
+      // TH2: Hủy (Backend redirect về sau khi update DB)
+      if (url.includes('payment-cancel')) {
+        setProcessing(false);
+        Alert.alert("Đã hủy", "Giao dịch đã bị hủy. Vé không được tạo.");
+      }
+    };
+
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    // Kiểm tra xem App có được mở từ link không 
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink({ url });
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   // --- HÀM CHUNG: TẠO VÉ TRONG DATABASE ---
   const createTicketInDatabase = async () => {
@@ -90,13 +151,14 @@ const OrderConfirmationScreen = ({ route, navigation }: any) => {
         from_station: fromStation.code,
         to_station: toStation.code,
         stops: Math.abs(toStation.order_index - fromStation.order_index), 
-        final_price: price, 
-        promo_code: null
+        final_price: finalPrice, 
+        promo_code: appliedCode || null
       });
     } else {
       res = await axiosClient.post('/tickets/pass', {
         product_code: productCode,
-        promo_code: null
+        final_price: finalPrice, 
+        promo_code: appliedCode || null
       });
     }
 
@@ -193,20 +255,65 @@ const OrderConfirmationScreen = ({ route, navigation }: any) => {
            <Ionicons name="chevron-forward" size={20} color="#ccc" />
         </View>
 
+        {/* --- PHẦN NHẬP MÃ KHUYẾN MÃI (MỚI) --- */}
+        <Text style={styles.sectionTitle}>Mã khuyến mãi</Text>
+        <View style={styles.promoContainer}>
+            <View style={styles.promoInputWrapper}>
+                <MaterialCommunityIcons name="ticket-percent-outline" size={20} color="#003eb3" style={{marginLeft: 10}} />
+                <TextInput 
+                    style={styles.promoInput}
+                    placeholder="Nhập mã giảm giá (VD: TET2025)"
+                    value={promoCode}
+                    onChangeText={text => !appliedCode && setPromoCode(text.toUpperCase())} // Không cho sửa khi đã áp dụng
+                    editable={!appliedCode}
+                />
+            </View>
+            
+            {appliedCode ? (
+                <TouchableOpacity style={styles.removeBtn} onPress={handleRemovePromo}>
+                    <Ionicons name="close-circle" size={24} color="#D32F2F" />
+                </TouchableOpacity>
+            ) : (
+                <TouchableOpacity 
+                    style={[styles.applyBtn, (!promoCode || checkingPromo) && {opacity: 0.5}]} 
+                    onPress={handleCheckPromo}
+                    disabled={!promoCode || checkingPromo}
+                >
+                    {checkingPromo ? <ActivityIndicator color="white" size="small" /> : <Text style={styles.applyBtnText}>Áp dụng</Text>}
+                </TouchableOpacity>
+            )}
+        </View>
+        {/* Hiển thị thông báo giảm giá nếu có */}
+        {appliedCode !== '' && (
+            <Text style={{color: '#4CAF50', fontSize: 13, marginTop: 5, marginLeft: 5}}>
+                <Ionicons name="checkmark-circle" /> Đã áp dụng mã {appliedCode} (-{discountAmount.toLocaleString()}đ)
+            </Text>
+        )}
+
         <Text style={styles.sectionTitle}>Thông tin thanh toán</Text>
         <View style={styles.card}>
            <View style={styles.row}>
               <Text style={styles.label}>Sản phẩm:</Text>
               <Text style={[styles.value, {fontWeight: 'bold'}]}>{displayProductName}</Text>
            </View>
-           <View style={styles.row}>
+           {/* <View style={styles.row}>
               <Text style={styles.label}>Đơn giá:</Text>
               <Text style={styles.value}>{price.toLocaleString()}đ</Text>
+           </View> */}
+           <View style={styles.row}>
+              <Text style={styles.label}>Tạm tính:</Text>
+              <Text style={styles.value}>{price.toLocaleString()}đ</Text>
            </View>
+           {discountAmount > 0 && (
+               <View style={styles.row}>
+                  <Text style={[styles.label, {color: '#4CAF50'}]}>Khuyến mãi:</Text>
+                  <Text style={[styles.value, {color: '#4CAF50'}]}>-{discountAmount.toLocaleString()}đ</Text>
+               </View>
+           )}
            <View style={styles.divider} />
            <View style={styles.row}>
               <Text style={[styles.label, {fontWeight: 'bold', color: '#000'}]}>Tổng giá tiền:</Text>
-              <Text style={[styles.value, {fontWeight: 'bold', color: '#D32F2F', fontSize: 16}]}>{price.toLocaleString()}đ</Text>
+              <Text style={[styles.value, {fontWeight: 'bold', color: '#D32F2F', fontSize: 16}]}>{finalPrice.toLocaleString()}đ</Text>
            </View>
         </View>
 
@@ -235,14 +342,14 @@ const OrderConfirmationScreen = ({ route, navigation }: any) => {
             onPress={handlePaymentPayOS}
             disabled={processing}
          >
-            {processing ? <ActivityIndicator color="white" /> : <Text style={styles.payButtonText}>Thanh toán: {price.toLocaleString()}đ</Text>}
+            {processing ? <ActivityIndicator color="white" /> : <Text style={styles.payButtonText}>Thanh toán: {finalPrice.toLocaleString()}đ</Text>}
          </TouchableOpacity>
          <TouchableOpacity 
             style={styles.payButton} 
             onPress={handlePaymentDemo}
             disabled={processing}
          >
-            {processing ? <ActivityIndicator color="white" /> : <Text style={styles.payButtonText}>Thanh toán: {price.toLocaleString()}đ (DEMO)</Text>}
+            {processing ? <ActivityIndicator color="white" /> : <Text style={styles.payButtonText}>Thanh toán: {finalPrice.toLocaleString()}đ (DEMO)</Text>}
          </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -264,7 +371,20 @@ const styles = StyleSheet.create({
   footer: { padding: 16, backgroundColor: 'white', borderTopWidth: 1, borderColor: '#eee' },
   footerNote: { fontSize: 12, color: '#008DDA', textAlign: 'center', marginBottom: 10 },
   payButton: { backgroundColor: '#333', borderRadius: 25, paddingVertical: 15, alignItems: 'center', margin: 10 },
-  payButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold' }
+  payButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+
+  promoContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
+  promoInputWrapper: { 
+    flex: 1, flexDirection: 'row', alignItems: 'center', 
+    backgroundColor: 'white', borderRadius: 8, borderWidth: 1, borderColor: '#ddd', height: 45 
+  },
+  promoInput: { flex: 1, marginLeft: 10, fontSize: 14, color: '#333', fontWeight: '600' },
+  applyBtn: { 
+    marginLeft: 10, backgroundColor: '#003eb3', paddingHorizontal: 15, height: 45, 
+    borderRadius: 8, justifyContent: 'center', alignItems: 'center' 
+  },
+  applyBtnText: { color: 'white', fontWeight: 'bold' },
+  removeBtn: { marginLeft: 10, justifyContent: 'center', padding: 5 }
 });
 
 export default OrderConfirmationScreen;

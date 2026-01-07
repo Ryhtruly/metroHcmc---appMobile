@@ -10,24 +10,27 @@ import dayjs from 'dayjs';
 
 const HomeScreen = ({ navigation }: any) => {
   const [user, setUser] = useState<any>(null);
-  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedAnnounce, setSelectedAnnounce] = useState<any>(null);
 
-  const loadData = async () => {
+const loadData = async () => {
     try {
       const jsonValue = await SecureStore.getItemAsync('user_info');
       if (jsonValue) setUser(JSON.parse(jsonValue));
 
-      const res: any = await axiosClient.get('/auth/announcements');
-      if (res.announcements) {
-        setAnnouncements(res.announcements);
+      // 2. Gọi API trộn dữ liệu mới (đã có middleware protect ở backend)
+      const res: any = await axiosClient.get('/auth/notifications');
+      
+      // 3. Hứng dữ liệu trả về từ controller (trả về field notifications)
+      if (res.success && res.notifications) {
+        setNotifications(res.notifications);
       }
     } catch (error) {
-      console.log('Lỗi tải trang chủ:', error);
+      console.log('Lỗi tải thông báo:', error);
     }
-  };
+};
 
   useFocusEffect(
     useCallback(() => {
@@ -115,30 +118,64 @@ const HomeScreen = ({ navigation }: any) => {
 
       {/* DANH SÁCH THÔNG BÁO */}
       <ScrollView 
-        style={styles.scrollContent} 
-        contentContainerStyle={{ paddingBottom: 100 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        showsVerticalScrollIndicator={false}
-      >
-         <Text style={styles.sectionTitle}>Tin tức & Thông báo</Text>
-         {announcements.length === 0 ? (
-            <Text style={{textAlign: 'center', color: '#999', marginTop: 20}}>Không có thông báo mới</Text>
-         ) : (
-            announcements.map((item: any) => (
-              <TouchableOpacity key={item.ann_id} style={styles.banner} onPress={() => handleOpenNews(item)}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.bannerTitle} numberOfLines={2}>{item.title}</Text>
-                    <Text style={styles.bannerDate}>{dayjs(item.created_at).format('DD/MM/YYYY')}</Text>
-                    <Text style={styles.bannerDesc} numberOfLines={2}>{item.content_md}</Text>
-                    <Text style={styles.bannerAction}>Xem chi tiết</Text>
-                  </View>
-                  <View style={styles.newsIconBox}>
-                    <MaterialCommunityIcons name={item.title.toLowerCase().includes('khuyến mãi') ? "gift-outline" : "newspaper-variant-outline"} size={32} color="#0056b3" />
-                  </View>
-              </TouchableOpacity>
-            ))
-         )}
-      </ScrollView>
+  style={styles.scrollContent} 
+  contentContainerStyle={{ paddingBottom: 100 }}
+  refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+  showsVerticalScrollIndicator={false}
+>
+  <Text style={styles.sectionTitle}>Tin tức & Thông báo</Text>
+  
+  {notifications.length === 0 ? (
+    <Text style={{textAlign: 'center', color: '#999', marginTop: 20}}>Không có thông báo mới</Text>
+  ) : (
+    notifications.map((item: any) => {
+      // Kiểm tra xem đây là quà tặng cá nhân hay tin chung
+      const isGift = item.type === 'PERSONAL';
+
+      return (
+        <TouchableOpacity 
+          key={item.id} // Dùng id chung
+          style={[
+            styles.banner, 
+            isGift && { borderColor: '#FF4D4F', borderWidth: 1, backgroundColor: '#FFF9F9' } // Làm nổi bật hộp quà
+          ]} 
+          onPress={() => handleOpenNews(item)}
+        >
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              {isGift && <MaterialCommunityIcons name="gift" size={16} color="#FF4D4F" style={{marginRight: 5}} />}
+              <Text 
+                style={[styles.bannerTitle, isGift && { color: '#FF4D4F' }]} 
+                numberOfLines={2}
+              >
+                {item.title}
+              </Text>
+            </View>
+            
+            <Text style={styles.bannerDate}>{dayjs(item.created_at).format('DD/MM/YYYY HH:mm')}</Text>
+            
+            {/* Dùng field 'content' thay vì 'content_md' vì đã được gộp từ SQL */}
+            <Text style={styles.bannerDesc} numberOfLines={2}>
+              {item.content}
+            </Text>
+            
+            <Text style={[styles.bannerAction, isGift && { color: '#FF4D4F' }]}>
+              {isGift ? 'Mở quà ngay' : 'Xem chi tiết'}
+            </Text>
+          </View>
+
+          <View style={[styles.newsIconBox, isGift && { backgroundColor: '#FFF1F0' }]}>
+            <MaterialCommunityIcons 
+              name={isGift ? "gift-outline" : "newspaper-variant-outline"} 
+              size={32} 
+              color={isGift ? "#FF4D4F" : "#0056b3"} 
+            />
+          </View>
+        </TouchableOpacity>
+      );
+    })
+  )}
+</ScrollView>
 
       {/* MODAL */}
       <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
@@ -158,7 +195,7 @@ const HomeScreen = ({ navigation }: any) => {
                    <Text style={styles.modalDate}>Đăng ngày: {dayjs(selectedAnnounce.created_at).format('DD/MM/YYYY HH:mm')}</Text>
                 </View>
                 <View style={styles.divider} />
-                <Text style={styles.modalContent}>{selectedAnnounce.content_md}</Text>
+                <Text style={styles.modalContent}>{selectedAnnounce.content}</Text>
                 <View style={{height: 40}} />
               </ScrollView>
             )}

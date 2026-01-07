@@ -20,9 +20,8 @@ import FeedbackScreen from '../screens/FeedbackScreen';
 import TicketInfoScreen from '../screens/TicketInfoScreen';
 import MetroMapScreen from '../screens/MetroMapScreen';
 import RedeemScreen from '../screens/RedeemScreen'; 
-import FaceRegisterScreen from '../screens/FaceRegisterScreen';
 import FaceLoginScreen from '../screens/FaceLoginScreen';
-
+import FaceRegisterScreen from '../screens/FaceRegisterScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
@@ -73,10 +72,11 @@ export default function AppNavigator() {
           <Stack.Screen name="OrderConfirmation" component={OrderConfirmationScreen} />
           <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
           <Stack.Screen name="SingleTicketSelection" component={SingleTicketSelectionScreen} />
-          <Stack.Screen name="FaceRegister" component={FaceRegisterScreen} options={{ headerShown: false }} />
+          
           {/* Màn hình Chức năng (Của Bạn) */}
           <Stack.Screen name="MetroMap" component={MetroMapScreen} />
-          <Stack.Screen name="FaceLogin" component={FaceLoginScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="FaceLogin" component={FaceLoginScreen} />
+          <Stack.Screen name="FaceRegister" component={FaceRegisterScreen} />
           <Stack.Screen 
             name="Redeem" 
             component={RedeemScreen} 

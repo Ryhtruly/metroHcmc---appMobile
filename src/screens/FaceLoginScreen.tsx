@@ -1,111 +1,83 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as FaceDetector from 'expo-face-detector';
-import * as ImageManipulator from 'expo-image-manipulator';
-import axiosClient from '../api/axiosClient';
-import { Ionicons } from '@expo/vector-icons';
+import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
+import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import axiosClient, { ApiResponse } from '../api/axiosClient';
 
 export default function FaceLoginScreen({ navigation }: any) {
-  const [permission, requestPermission] = useCameraPermissions();
   const [isProcessing, setIsProcessing] = useState(false);
-  const cameraRef = useRef<any>(null);
 
-  // Vòng lặp Auto-Scan
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
+  // 🔥 Tự động quét khi vừa mở màn hình
+  useFocusEffect(
+    useCallback(() => {
+      const timer = setTimeout(() => handleBiometricLogin(), 500);
+      return () => clearTimeout(timer);
+    }, [])
+  );
 
-    const autoCapture = async () => {
-      if (!cameraRef.current || isProcessing) return;
+ const handleBiometricLogin = async () => {
+  try {
+    setIsProcessing(true);
 
-      try {
-        // 1. Chụp thử
-        const photo = await cameraRef.current.takePictureAsync({ quality: 0.3, skipProcessing: true });
-        
-        // 2. Soi xem có mặt không
-        const result = await FaceDetector.detectFacesAsync(photo.uri, {
-            mode: FaceDetector.FaceDetectorMode.fast,
-            detectLandmarks: FaceDetector.FaceDetectorLandmarks.none,
+    // Gọi trình quét hệ thống
+    const result = await LocalAuthentication.authenticateAsync({
+      promptMessage: 'Xác thực khuôn mặt để vào Metro', // Lời nhắc hiện trên iQOO
+      fallbackLabel: 'Dùng mật khẩu',
+      
+      // 🔥 DÀNH CHO ANDROID (iQOO):
+      // Tắt xác nhận giúp máy quét mặt xong là "bắn" vào Home ngay
+      requireConfirmation: false, 
+      
+      // Cho phép dùng vân tay nếu camera không thấy mặt (để tránh treo app)
+      disableDeviceFallback: false,
+    });
+
+    if (result.success) {
+      const savedToken = await SecureStore.getItemAsync('biometric_token');
+      
+      if (savedToken) {
+        // Gọi API Login Biometric
+        const res = await axiosClient.post<any, ApiResponse>('/auth/login-biometric', { 
+          biometricToken: savedToken 
         });
 
-        // 3. Nếu có mặt -> Gửi đi đăng nhập ngay
-        if (result.faces.length > 0) {
-            setIsProcessing(true); // Dừng scan
-            console.log("Phát hiện khuôn mặt! Đang đăng nhập...");
-            
-            // Resize ảnh cho nhẹ trước khi gửi
-            const finalPhoto = await ImageManipulator.manipulateAsync(
-                photo.uri, [{ resize: { width: 600 } }], { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
-            );
-            
-            await handleLogin(finalPhoto.uri);
+        if (res.success && res.token) {
+          await SecureStore.setItemAsync('auth_token', res.token);
+          navigation.replace('Home');
         }
-      } catch (e) {
-        console.log("Scan error (ignore):", e);
       }
-    };
-
-    if (permission?.granted && !isProcessing) {
-      interval = setInterval(autoCapture, 1000); // 1 giây check 1 lần cho đỡ lag
     }
-
-    return () => clearInterval(interval);
-  }, [permission, isProcessing]);
-
-  const handleLogin = async (uri: string) => {
-    try {
-      const emailToLogin = "customer@metro.local"; // Sửa lại đúng logic lấy email của bạn
-
-      const formData = new FormData();
-      formData.append('email', emailToLogin);
-      // @ts-ignore
-      formData.append('face_image', { uri: uri, type: 'image/jpeg', name: 'login.jpg' });
-
-      const res: any = await axiosClient.post('/auth/login-face', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      if (res.success) {
-        await SecureStore.setItemAsync('user_info', JSON.stringify(res.user));
-        Alert.alert('Xin chào', res.user.display_name, [
-            { text: 'Vào trang chủ', onPress: () => navigation.replace('Home') }
-        ]);
-      } else {
-        Alert.alert('Thất bại', 'Không nhận diện được', [
-            { text: 'Thử lại', onPress: () => setIsProcessing(false) } // Cho phép scan lại
-        ]);
-      }
-    } catch (error) {
-      Alert.alert('Lỗi', 'Server Error', [{ text: 'Thử lại', onPress: () => setIsProcessing(false) }]);
-    }
-  };
-
-  if (!permission?.granted) return <View />;
-
+  } catch (error) {
+    console.log("Lỗi:", error);
+  } finally {
+    setIsProcessing(false);
+  }
+};
   return (
     <View style={styles.container}>
-      <CameraView style={styles.camera} facing="front" ref={cameraRef}>
-        <View style={styles.overlay}>
-          <View style={[styles.faceFrame, { borderColor: isProcessing ? '#00ff00' : 'white' }]} />
-          <Text style={styles.statusText}>
-            {isProcessing ? "Đang xác thực..." : "Đang tìm khuôn mặt..."}
-          </Text>
-          {isProcessing && <ActivityIndicator size="large" color="#00ff00" style={{marginTop: 20}} />}
-        </View>
-      </CameraView>
-      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-        <Ionicons name="close-circle" size={50} color="white" />
+      <Ionicons name="scan-circle-outline" size={120} color="#003eb3" />
+      <Text style={styles.title}>Đăng nhập nhanh</Text>
+      <Text style={styles.subTitle}>Đang nhận diện khuôn mặt...</Text>
+      
+      {isProcessing && <ActivityIndicator size="large" color="#003eb3" style={{ marginTop: 20 }} />}
+
+      <TouchableOpacity style={styles.btn} onPress={handleBiometricLogin} disabled={isProcessing}>
+        <Text style={styles.btnText}>QUÉT LẠI</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => navigation.goBack()}>
+        <Text style={{color: '#666', marginTop: 25}}>Dùng mật khẩu truyền thống</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  camera: { flex: 1 },
-  overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)' },
-  faceFrame: { width: 280, height: 280, borderWidth: 3, borderRadius: 140, marginBottom: 20 },
-  statusText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
-  backBtn: { position: 'absolute', bottom: 40, alignSelf: 'center' }
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
+  title: { fontSize: 24, fontWeight: 'bold', color: '#333', marginTop: 20 },
+  subTitle: { fontSize: 16, color: '#666', marginTop: 10 },
+  btn: { backgroundColor: '#f0f4ff', paddingHorizontal: 40, paddingVertical: 15, borderRadius: 30, marginTop: 40, borderWidth: 1, borderColor: '#003eb3' },
+  btnText: { color: '#003eb3', fontWeight: 'bold' }
 });

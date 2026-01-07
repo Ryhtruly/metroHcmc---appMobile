@@ -365,7 +365,8 @@ const AccountScreen = ({ navigation }: any) => {
             <MenuRow
               icon="notifications-outline"
               title="Cài đặt thông báo"
-              onPress={() => navigation.navigate('NotificationSettings')}
+              // 🔥 SỬA: Tạm dẫn sang Feedback để không bị crash ứng dụng
+              onPress={() => navigation.navigate('Feedback')} 
             />
             <MenuRow
               icon="chatbox-ellipses-outline"

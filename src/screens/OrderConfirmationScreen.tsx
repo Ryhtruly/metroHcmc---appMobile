@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIn
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import axiosClient from '../api/axiosClient';
-import * as Linking from 'expo-linking';
+import * as Linking from 'expo-linking'; 
 
 const navigateToMyTickets = (navigation: any) => {
   // Reset về màn hình gốc (Stack Home) để xóa lịch sử Back

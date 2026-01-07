@@ -2,7 +2,6 @@
   "expo": {
     "name": "metro-mobile",
     "slug": "metro-mobile",
-    "scheme": "metroapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,23 +13,36 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Cho phép Metro HCMC sử dụng FaceID để đăng nhập nhanh chóng và an toàn."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.anonymous.metromobile"
+      "package": "com.anonymous.metromobile",
+      "permissions": [
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT",
+        "CAMERA"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "expo-router",
       "expo-secure-store",
-      "expo-camera",
-      "expo-asset",
-      "expo-font"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Cho phép Metro HCMC sử dụng FaceID."
+        }
+      ]
     ]
   }
 }

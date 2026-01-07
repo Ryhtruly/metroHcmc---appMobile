@@ -15,6 +15,7 @@ import * as SecureStore from 'expo-secure-store';
 import axiosClient from '../api/axiosClient';
 import { Ionicons } from '@expo/vector-icons';
 
+
 const LoginScreen = ({ navigation }: any) => {
   // Đổi default sang tài khoản Customer để bạn đỡ phải gõ lại khi test
   const [email, setEmail] = useState('customer@metro.local');
@@ -132,14 +133,12 @@ const LoginScreen = ({ navigation }: any) => {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.loginBtn, { backgroundColor: '#28a745', marginTop: 10 }]}
-            onPress={() => navigation.navigate('FaceLogin')}
+          <TouchableOpacity 
+            style={styles.biometricBtn} 
+            onPress={() => navigation.navigate('FaceLogin')} 
           >
-            <View style={{flexDirection: 'row', alignItems: 'center'}}>
-              <Ionicons name="scan-outline" size={20} color="white" style={{marginRight: 8}} />
-              <Text style={styles.loginBtnText}>ĐĂNG NHẬP FACE ID</Text>
-            </View>
+            <Ionicons name="finger-print" size={24} color="#003eb3" />
+            <Text style={styles.biometricText}>Đăng nhập nhanh (FaceID/Vân tay)</Text>
           </TouchableOpacity>
 
         </View>
@@ -190,6 +189,21 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 40 },
   footerText: { color: '#666', fontSize: 14 },
   signupText: { color: '#003eb3', fontWeight: 'bold', fontSize: 14 },
+
+  biometricBtn: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginTop: 15,
+  padding: 12,
+  borderRadius: 12,
+  backgroundColor: '#f0f4ff',
+  borderWidth: 1,
+  borderColor: '#d0d7de',
+},
+biometricText: { marginLeft: 10, color: '#003eb3', fontWeight: '600' },
+
+
 });
 
 export default LoginScreen;

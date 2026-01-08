@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -13,13 +13,14 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
-import { useFocusEffect } from '@react-navigation/native'; 
-import axiosClient from '../api/axiosClient';
-import DateTimePicker from '@react-native-community/datetimepicker'; 
+  Keyboard,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import * as SecureStore from "expo-secure-store";
+import { useFocusEffect } from "@react-navigation/native";
+import axiosClient from "../api/axiosClient";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 const AccountScreen = ({ navigation }: any) => {
   const [user, setUser] = useState<any>(null);
@@ -27,19 +28,20 @@ const AccountScreen = ({ navigation }: any) => {
   const [refreshing, setRefreshing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
-    display_name: '',
-    phone_number: '',
-    address: '',
-    cccd: '',
-    birth_date: '',
+    display_name: "",
+    phone_number: "",
+    address: "",
+    cccd: "",
+    birth_date: "",
   });
   const [saving, setSaving] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);  // State để kiểm soát DatePicker
+  const [showDatePicker, setShowDatePicker] = useState(false); // State để kiểm soát DatePicker
+  const [selectedDate, setSelectedDate] = useState(new Date()); // State lưu ngày đang chọn (fix lỗi 1970)
   // Thêm trạng thái mới để kiểm tra việc mở/đóng modal đổi mật khẩu
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   //show password
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -52,32 +54,32 @@ const AccountScreen = ({ navigation }: any) => {
   // Đóng modal
   const closePasswordModal = () => {
     setIsModalVisible(false);
-    setOldPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    setOldPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
   };
 
   const handleChangePassword = async () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Lỗi', 'Vui lòng điền đủ các trường');
+      Alert.alert("Lỗi", "Vui lòng điền đủ các trường");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Lỗi', 'Mật khẩu mới không khớp với xác nhận mật khẩu');
+      Alert.alert("Lỗi", "Mật khẩu mới không khớp với xác nhận mật khẩu");
       return;
     }
 
     setLoading(true);
 
     try {
-      const token = await SecureStore.getItemAsync('auth_token');
+      const token = await SecureStore.getItemAsync("auth_token");
       if (!token) {
-        Alert.alert('Lỗi', 'Token không tồn tại');
+        Alert.alert("Lỗi", "Token không tồn tại");
         return;
       }
 
-      const response: any = await axiosClient.post('auth/reset-password', {
+      const response: any = await axiosClient.post("auth/reset-password", {
         token,
         old_password: oldPassword,
         new_password: newPassword,
@@ -85,43 +87,48 @@ const AccountScreen = ({ navigation }: any) => {
 
       if (response.success) {
         Alert.alert(
-          'Thành công',
-          'Mật khẩu đã được thay đổi. Bạn sẽ được đăng xuất để đăng nhập lại.',
+          "Thành công",
+          "Mật khẩu đã được thay đổi. Bạn sẽ được đăng xuất để đăng nhập lại.",
           [
             {
-              text: 'Đồng ý',
+              text: "Đồng ý",
               onPress: async () => {
-                await SecureStore.deleteItemAsync('auth_token');
-                await SecureStore.deleteItemAsync('user_info');
-                navigation.replace('Login'); // chuyển về màn hình Login
+                await SecureStore.deleteItemAsync("auth_token");
+                await SecureStore.deleteItemAsync("user_info");
+                navigation.replace("Login"); // chuyển về màn hình Login
               },
             },
           ]
         );
       } else {
-        Alert.alert('Lỗi', response.message || 'Có lỗi xảy ra khi thay đổi mật khẩu');
+        Alert.alert(
+          "Lỗi",
+          response.message || "Có lỗi xảy ra khi thay đổi mật khẩu"
+        );
       }
     } catch (error: any) {
-      console.log('Lỗi đổi mật khẩu:', error);
-      Alert.alert('Lỗi', error?.response?.data?.message || 'Có lỗi xảy ra khi thay đổi mật khẩu');
+      console.log("Lỗi đổi mật khẩu:", error);
+      Alert.alert(
+        "Lỗi",
+        error?.response?.data?.message || "Có lỗi xảy ra khi thay đổi mật khẩu"
+      );
     } finally {
       setLoading(false);
       closePasswordModal(); // đóng modal sau khi xử lý xong
     }
   };
 
-
   // Hàm lấy thông tin user mới nhất từ Server
   const fetchProfile = async () => {
     try {
-      const res: any = await axiosClient.get('/auth/me');
+      const res: any = await axiosClient.get("/auth/me");
       if (res.success && res.user) {
         setUser(res.user);
-        await SecureStore.setItemAsync('user_info', JSON.stringify(res.user));
+        await SecureStore.setItemAsync("user_info", JSON.stringify(res.user));
       }
     } catch (error) {
-      console.log('Lỗi lấy thông tin cá nhân:', error);
-      const localUser = await SecureStore.getItemAsync('user_info');
+      console.log("Lỗi lấy thông tin cá nhân:", error);
+      const localUser = await SecureStore.getItemAsync("user_info");
       if (localUser) setUser(JSON.parse(localUser));
     }
   };
@@ -137,12 +144,24 @@ const AccountScreen = ({ navigation }: any) => {
   const openEditModal = () => {
     if (!user) return;
     setEditForm({
-      display_name: user.display_name || '',
-      phone_number: user.phone_number || '',
-      address: user.address || '',
-      cccd: user.cccd || '',
-      birth_date: user.birth_date || '',
+      display_name: user.display_name || "",
+      phone_number: user.phone_number || "",
+      address: user.address || "",
+      cccd: user.cccd || "",
+      birth_date: user.birth_date || "",
     });
+    // Fix lỗi ngày sinh bị reset về 1970 hoặc không đồng bộ
+    if (user.birth_date) {
+      const parsedDate = new Date(user.birth_date);
+      // Nếu ngày hợp lệ và không phải 1970 (do backend trả về default), thì dùng ngày đó
+      if (!isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 1970) {
+        setSelectedDate(parsedDate);
+      } else {
+        setSelectedDate(new Date());
+      }
+    } else {
+      setSelectedDate(new Date());
+    }
     setIsEditing(true);
   };
 
@@ -169,27 +188,31 @@ const AccountScreen = ({ navigation }: any) => {
 
       // Validate dữ liệu
       if (!editForm.display_name.trim()) {
-        Alert.alert('Lỗi', 'Tên hiển thị không được để trống');
+        Alert.alert("Lỗi", "Tên hiển thị không được để trống");
         setSaving(false);
         return;
       }
 
       // Gửi PUT request để cập nhật thông tin
-      const res: any = await axiosClient.put('/auth/me', updateData);
+      const res: any = await axiosClient.put("/auth/me", updateData);
 
       if (res.success && res.user) {
         setUser(res.user); // cập nhật dữ liệu người dùng mới
-        await SecureStore.setItemAsync('user_info', JSON.stringify(res.user)); // Lưu lại thông tin
-        Alert.alert('Thành công', 'Cập nhật thông tin thành công');
+        await SecureStore.setItemAsync("user_info", JSON.stringify(res.user)); // Lưu lại thông tin
+        Alert.alert("Thành công", "Cập nhật thông tin thành công");
         closeEditModal();
       } else {
-        Alert.alert('Lỗi', res.message || 'Không thể cập nhật thông tin');
+        Alert.alert("Lỗi", res.message || "Không thể cập nhật thông tin");
       }
     } catch (error: any) {
-      console.log('Lỗi cập nhật thông tin:', error);
+      console.log("Lỗi cập nhật thông tin:", error);
       if (error.response) {
-        console.log('Lỗi từ server:', error.response.data);
-        Alert.alert('Lỗi', error.response?.data?.message || 'Có lỗi xảy ra khi cập nhật thông tin');
+        console.log("Lỗi từ server:", error.response.data);
+        Alert.alert(
+          "Lỗi",
+          error.response?.data?.message ||
+            "Có lỗi xảy ra khi cập nhật thông tin"
+        );
       }
     } finally {
       setSaving(false);
@@ -198,21 +221,41 @@ const AccountScreen = ({ navigation }: any) => {
 
   // Format ngày sinh
   const formatDateOfBirth = (dateString: string) => {
-    if (!dateString) return '---';
+    if (!dateString) return "---";
     try {
-      return new Date(dateString).toLocaleDateString('vi-VN');
+      return new Date(dateString).toLocaleDateString("vi-VN");
     } catch (e) {
-      return '---';
+      return "---";
     }
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
-    const currentDate = selectedDate || new Date();
-    setShowDatePicker(Platform.OS === 'ios' ? true : false);  // Để lại DatePicker nếu đang trên iOS
+    if (Platform.OS === "android") {
+      setShowDatePicker(false);
+    }
+    if (selectedDate) {
+      setSelectedDate(selectedDate);
+      if (Platform.OS === "android") {
+        const year = selectedDate.getFullYear();
+        const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
+        const day = String(selectedDate.getDate()).padStart(2, "0");
+        setEditForm({
+          ...editForm,
+          birth_date: `${year}-${month}-${day}`,
+        });
+      }
+    }
+  };
+
+  const confirmIOSDate = () => {
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
+    const day = String(selectedDate.getDate()).padStart(2, "0");
     setEditForm({
       ...editForm,
-      birth_date: currentDate.toISOString().split('T')[0],  // Lưu giá trị ngày sinh theo định dạng YYYY-MM-DD
+      birth_date: `${year}-${month}-${day}`,
     });
+    setShowDatePicker(false);
   };
 
   useFocusEffect(
@@ -222,32 +265,39 @@ const AccountScreen = ({ navigation }: any) => {
   );
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Đăng xuất',
-      'Bạn có chắc chắn muốn đăng xuất?',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Đồng ý',
-          style: 'destructive',
-          onPress: async () => {
-            await SecureStore.deleteItemAsync('auth_token');
-            await SecureStore.deleteItemAsync('user_info');
-            navigation.replace('Login');
-          }
-        }
-      ]
-    );
+    Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
+      { text: "Hủy", style: "cancel" },
+      {
+        text: "Đồng ý",
+        style: "destructive",
+        onPress: async () => {
+          await SecureStore.deleteItemAsync("auth_token");
+          await SecureStore.deleteItemAsync("user_info");
+          navigation.replace("Login");
+        },
+      },
+    ]);
   };
 
   // Hàm render dòng menu
   const MenuRow = ({ icon, title, value, isRed = false, onPress }: any) => (
-    <TouchableOpacity style={styles.menuRow} onPress={onPress} disabled={!onPress}>
-      <View style={[styles.iconBox, { backgroundColor: isRed ? '#FFF0F0' : '#F0F8FF' }]}>
-        <Ionicons name={icon} size={20} color={isRed ? '#FF4D4F' : '#0056b3'} />
+    <TouchableOpacity
+      style={styles.menuRow}
+      onPress={onPress}
+      disabled={!onPress}
+    >
+      <View
+        style={[
+          styles.iconBox,
+          { backgroundColor: isRed ? "#FFF0F0" : "#F0F8FF" },
+        ]}
+      >
+        <Ionicons name={icon} size={20} color={isRed ? "#FF4D4F" : "#0056b3"} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={[styles.menuText, isRed && { color: '#FF4D4F' }]}>{title}</Text>
+        <Text style={[styles.menuText, isRed && { color: "#FF4D4F" }]}>
+          {title}
+        </Text>
         {value && <Text style={styles.menuSubText}>{value}</Text>}
       </View>
       {!isRed && <Ionicons name="chevron-forward" size={20} color="#ccc" />}
@@ -255,15 +305,18 @@ const AccountScreen = ({ navigation }: any) => {
   );
 
   // Ảnh mặc định nếu user chưa có avatar
-  const defaultAvatar = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+  const defaultAvatar = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F5F7FA' }}>
+    <View style={{ flex: 1, backgroundColor: "#F5F7FA" }}>
       {/* HEADER GRADIENT */}
-      <LinearGradient colors={['#0056b3', '#008DDA']} style={styles.header}>
+      <LinearGradient colors={["#0056b3", "#008DDA"]} style={styles.header}>
         <View style={styles.headerTopRow}>
           <Text style={styles.headerTitle}>Tài khoản</Text>
-          <TouchableOpacity onPress={openEditModal} style={styles.editProfileButton}>
+          <TouchableOpacity
+            onPress={openEditModal}
+            style={styles.editProfileButton}
+          >
             <Ionicons name="create-outline" size={20} color="white" />
             <Text style={styles.editProfileText}>Sửa hồ sơ</Text>
           </TouchableOpacity>
@@ -280,9 +333,9 @@ const AccountScreen = ({ navigation }: any) => {
             </View>
           </View>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Text style={styles.name}>
-              {user?.display_name || 'Đang tải...'}
+              {user?.display_name || "Đang tải..."}
             </Text>
           </View>
 
@@ -290,7 +343,7 @@ const AccountScreen = ({ navigation }: any) => {
             <View style={styles.badge}>
               <Ionicons name="shield-checkmark" size={12} color="white" />
               <Text style={styles.badgeText}>
-                {user.role === 'CUSTOMER' ? 'Khách hàng thân thiết' : user.role}
+                {user.role === "CUSTOMER" ? "Khách hàng thân thiết" : user.role}
               </Text>
             </View>
           )}
@@ -306,7 +359,11 @@ const AccountScreen = ({ navigation }: any) => {
         }
       >
         {loading && !refreshing ? (
-          <ActivityIndicator size="large" color="#0056b3" style={styles.loadingIndicator} />
+          <ActivityIndicator
+            size="large"
+            color="#0056b3"
+            style={styles.loadingIndicator}
+          />
         ) : (
           <>
             <Text style={styles.sectionTitle}>Thông tin cá nhân</Text>
@@ -325,30 +382,30 @@ const AccountScreen = ({ navigation }: any) => {
               title="Ngày tham gia"
               value={
                 user?.created_at
-                  ? new Date(user.created_at).toLocaleDateString('vi-VN')
-                  : '---'
+                  ? new Date(user.created_at).toLocaleDateString("vi-VN")
+                  : "---"
               }
             />
             <MenuRow
               icon="scan-outline"
               title="Đăng ký khuôn mặt (Face ID)"
-              onPress={() => navigation.navigate('FaceRegister')}
+              onPress={() => navigation.navigate("FaceRegister")}
             />
 
             <MenuRow
               icon="phone-portrait-outline"
               title="Số điện thoại"
-              value={user?.phone_number || 'Chưa cập nhật'}
+              value={user?.phone_number || "Chưa cập nhật"}
             />
             <MenuRow
               icon="home-outline"
               title="Địa chỉ"
-              value={user?.address || 'Chưa cập nhật'}
+              value={user?.address || "Chưa cập nhật"}
             />
             <MenuRow
               icon="id-card-outline"
               title="CCCD"
-              value={user?.cccd || 'Chưa cập nhật'}
+              value={user?.cccd || "Chưa cập nhật"}
             />
             <MenuRow
               icon="calendar-outline"
@@ -366,15 +423,17 @@ const AccountScreen = ({ navigation }: any) => {
               icon="notifications-outline"
               title="Cài đặt thông báo"
               // 🔥 SỬA: Tạm dẫn sang Feedback để không bị crash ứng dụng
-              onPress={() => navigation.navigate('Feedback')} 
+              onPress={() => navigation.navigate("Feedback")}
             />
             <MenuRow
               icon="chatbox-ellipses-outline"
               title="Gửi phản hồi / Hỗ trợ"
-              onPress={() => navigation.navigate('Feedback')}
+              onPress={() => navigation.navigate("Feedback")}
             />
 
-            <View style={{ height: 1, backgroundColor: '#eee', marginVertical: 10 }} />
+            <View
+              style={{ height: 1, backgroundColor: "#eee", marginVertical: 10 }}
+            />
 
             <MenuRow
               icon="log-out-outline"
@@ -383,7 +442,9 @@ const AccountScreen = ({ navigation }: any) => {
               onPress={handleLogout}
             />
 
-            <Text style={styles.versionText}>Phiên bản 1.0.0 - Metro Connect</Text>
+            <Text style={styles.versionText}>
+              Phiên bản 1.0.0 - Metro Connect
+            </Text>
           </>
         )}
       </ScrollView>
@@ -394,7 +455,10 @@ const AccountScreen = ({ navigation }: any) => {
         transparent={true}
         onRequestClose={closePasswordModal}
       >
-        <View style={styles.modalContainer}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.modalContainer}
+        >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Đổi mật khẩu</Text>
@@ -403,100 +467,111 @@ const AccountScreen = ({ navigation }: any) => {
               </TouchableOpacity>
             </View>
 
-            {/* Mật khẩu cũ */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Mật khẩu cũ *</Text>
-              <View style={styles.inputWithIcon}>
+            <ScrollView
+              contentContainerStyle={{ padding: 20 }}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* Mật khẩu cũ */}
+              <Text style={styles.inputLabel}>Mật khẩu hiện tại</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color="#666"
+                  style={{ marginRight: 10 }}
+                />
                 <TextInput
+                  style={styles.inputField}
                   value={oldPassword}
                   onChangeText={setOldPassword}
                   placeholder="Nhập mật khẩu cũ"
                   secureTextEntry={!showOldPassword}
+                  placeholderTextColor="#999"
                 />
                 <TouchableOpacity
-                  style={styles.eyeIcon}
                   onPress={() => setShowOldPassword(!showOldPassword)}
                 >
                   <Ionicons
-                    name={showOldPassword ? 'eye-off-outline' : 'eye-outline'}
+                    name={showOldPassword ? "eye-off-outline" : "eye-outline"}
                     size={20}
                     color="#666"
                   />
                 </TouchableOpacity>
               </View>
-            </View>
 
-            {/* Mật khẩu mới */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Mật khẩu mới *</Text>
-              <View style={styles.inputWithIcon}>
+              {/* Mật khẩu mới */}
+              <Text style={styles.inputLabel}>Mật khẩu mới</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons
+                  name="key-outline"
+                  size={20}
+                  color="#666"
+                  style={{ marginRight: 10 }}
+                />
                 <TextInput
+                  style={styles.inputField}
                   value={newPassword}
                   onChangeText={setNewPassword}
                   placeholder="Nhập mật khẩu mới"
                   secureTextEntry={!showNewPassword}
+                  placeholderTextColor="#999"
                 />
                 <TouchableOpacity
-                  style={styles.eyeIcon}
                   onPress={() => setShowNewPassword(!showNewPassword)}
                 >
                   <Ionicons
-                    name={showNewPassword ? 'eye-off-outline' : 'eye-outline'}
+                    name={showNewPassword ? "eye-off-outline" : "eye-outline"}
                     size={20}
                     color="#666"
                   />
                 </TouchableOpacity>
               </View>
-            </View>
 
-            {/* Xác nhận mật khẩu */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Xác nhận mật khẩu *</Text>
-              <View style={styles.inputWithIcon}>
+              {/* Xác nhận mật khẩu */}
+              <Text style={styles.inputLabel}>Xác nhận mật khẩu mới</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={20}
+                  color="#666"
+                  style={{ marginRight: 10 }}
+                />
                 <TextInput
+                  style={styles.inputField}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
-                  placeholder="Xác nhận mật khẩu mới"
+                  placeholder="Nhập lại mật khẩu mới"
                   secureTextEntry={!showConfirmPassword}
+                  placeholderTextColor="#999"
                 />
                 <TouchableOpacity
-                  style={styles.eyeIcon}
                   onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
                   <Ionicons
-                    name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                    name={
+                      showConfirmPassword ? "eye-off-outline" : "eye-outline"
+                    }
                     size={20}
                     color="#666"
                   />
                 </TouchableOpacity>
               </View>
-            </View>
-
-            {/* Actions */}
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={closePasswordModal}
-              >
-                <Text style={styles.cancelButtonText}>Hủy</Text>
-              </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.modalButton, styles.saveButton]}
+                style={styles.primaryBtn}
                 onPress={handleChangePassword}
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color="#fff" size="small" />
+                  <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.saveButtonText}>Lưu thay đổi</Text>
+                  <Text style={styles.primaryBtnText}>Cập nhật mật khẩu</Text>
                 )}
               </TouchableOpacity>
-            </View>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
-
 
       {/* MODAL CHỈNH SỬA THÔNG TIN */}
       <Modal
@@ -506,7 +581,7 @@ const AccountScreen = ({ navigation }: any) => {
         onRequestClose={closeEditModal}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.modalContainer}
         >
           <View style={styles.modalContent}>
@@ -517,13 +592,18 @@ const AccountScreen = ({ navigation }: any) => {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.editForm}>
+            <ScrollView
+              style={styles.editForm}
+              keyboardShouldPersistTaps="handled"
+            >
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Họ và tên *</Text>
                 <TextInput
                   style={styles.input}
                   value={editForm.display_name}
-                  onChangeText={(text) => setEditForm({ ...editForm, display_name: text })}
+                  onChangeText={(text) =>
+                    setEditForm({ ...editForm, display_name: text })
+                  }
                   placeholder="Nhập họ và tên"
                 />
               </View>
@@ -533,7 +613,9 @@ const AccountScreen = ({ navigation }: any) => {
                 <TextInput
                   style={styles.input}
                   value={editForm.phone_number}
-                  onChangeText={(text) => setEditForm({ ...editForm, phone_number: text })}
+                  onChangeText={(text) =>
+                    setEditForm({ ...editForm, phone_number: text })
+                  }
                   placeholder="Nhập số điện thoại"
                   keyboardType="phone-pad"
                 />
@@ -544,7 +626,9 @@ const AccountScreen = ({ navigation }: any) => {
                 <TextInput
                   style={styles.input}
                   value={editForm.address}
-                  onChangeText={(text) => setEditForm({ ...editForm, address: text })}
+                  onChangeText={(text) =>
+                    setEditForm({ ...editForm, address: text })
+                  }
                   placeholder="Nhập địa chỉ"
                   multiline
                 />
@@ -555,7 +639,9 @@ const AccountScreen = ({ navigation }: any) => {
                 <TextInput
                   style={styles.input}
                   value={editForm.cccd}
-                  onChangeText={(text) => setEditForm({ ...editForm, cccd: text })}
+                  onChangeText={(text) =>
+                    setEditForm({ ...editForm, cccd: text })
+                  }
                   placeholder="Nhập số CCCD/CMND"
                   keyboardType="numeric"
                 />
@@ -563,19 +649,23 @@ const AccountScreen = ({ navigation }: any) => {
 
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Ngày sinh</Text>
-                <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-                  <Text style={styles.input}>
-                    {editForm.birth_date ? editForm.birth_date : 'Chọn ngày sinh'}
+                <TouchableOpacity
+                  onPress={() => {
+                    Keyboard.dismiss(); // Ẩn bàn phím trước khi mở DatePicker
+                    setShowDatePicker(true);
+                  }}
+                  style={styles.dateInputBtn}
+                >
+                  <Text
+                    style={{
+                      fontSize: 15,
+                      color: editForm.birth_date ? "#333" : "#999",
+                    }}
+                  >
+                    {editForm.birth_date || "Chọn ngày sinh"}
                   </Text>
+                  <Ionicons name="calendar-outline" size={20} color="#666" />
                 </TouchableOpacity>
-                {showDatePicker && (
-                  <DateTimePicker
-                    value={new Date(editForm.birth_date || Date.now())}
-                    mode="date"
-                    display="default"
-                    onChange={handleDateChange}
-                  />
-                )}
               </View>
             </ScrollView>
 
@@ -601,10 +691,57 @@ const AccountScreen = ({ navigation }: any) => {
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* iOS DatePicker Overlay - Nhúng trực tiếp vào Modal Sửa hồ sơ */}
+          {Platform.OS === "ios" && showDatePicker && (
+            <View style={styles.iosDatePickerOverlay}>
+              <View style={styles.iosModalContent}>
+                <View style={styles.iosModalHeader}>
+                  <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                    <Text style={{ color: "#666", fontSize: 16 }}>Hủy</Text>
+                  </TouchableOpacity>
+                  <Text style={{ fontWeight: "bold", fontSize: 16 }}>
+                    Chọn ngày sinh
+                  </Text>
+                  <TouchableOpacity onPress={confirmIOSDate}>
+                    <Text
+                      style={{
+                        color: "#007AFF",
+                        fontSize: 16,
+                        fontWeight: "bold",
+                      }}
+                    >
+                      Xong
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={selectedDate}
+                  mode="date"
+                  display="spinner"
+                  onChange={handleDateChange}
+                  locale="vi-VN"
+                  maximumDate={new Date()}
+                  textColor="black" // Đảm bảo text màu đen trên iOS
+                  themeVariant="light" // Bắt buộc giao diện sáng để tránh lỗi hiển thị dark mode
+                />
+              </View>
+            </View>
+          )}
         </KeyboardAvoidingView>
       </Modal>
-    </View>
 
+      {/* Date Picker for Android (Render outside Modal to avoid z-index issues) */}
+      {Platform.OS === "android" && showDatePicker && (
+        <DateTimePicker
+          value={selectedDate}
+          mode="date"
+          display="default"
+          maximumDate={new Date()}
+          onChange={handleDateChange}
+        />
+      )}
+    </View>
   );
 };
 
@@ -612,40 +749,40 @@ const styles = StyleSheet.create({
   header: {
     height: 280,
     paddingTop: 60,
-    alignItems: 'center',
+    alignItems: "center",
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
   },
   headerTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    width: '90%',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "90%",
     marginBottom: 20,
   },
   headerTitle: {
-    color: 'white',
+    color: "white",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   editProfileButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.2)",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
   },
   editProfileText: {
-    color: 'white',
+    color: "white",
     fontSize: 14,
     marginLeft: 5,
   },
   profileBox: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   avatarContainer: {
-    position: 'relative',
+    position: "relative",
     marginBottom: 10,
   },
   avatar: {
@@ -653,87 +790,87 @@ const styles = StyleSheet.create({
     height: 90,
     borderRadius: 45,
     borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.8)',
-    backgroundColor: '#fff',
+    borderColor: "rgba(255,255,255,0.8)",
+    backgroundColor: "#fff",
   },
   editIcon: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     padding: 6,
     borderRadius: 15,
     elevation: 2,
   },
   name: {
-    color: 'white',
+    color: "white",
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 5,
   },
   badge: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    flexDirection: "row",
+    backgroundColor: "rgba(255,255,255,0.2)",
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 15,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 5,
   },
   badgeText: {
-    color: 'white',
+    color: "white",
     fontSize: 12,
     marginLeft: 5,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   menuContainer: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     marginHorizontal: 20,
     marginTop: -40,
     borderRadius: 20,
     padding: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.05,
     elevation: 5,
     marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#999',
+    fontWeight: "bold",
+    color: "#999",
     marginBottom: 10,
     marginTop: 10,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   menuRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
+    borderBottomColor: "#f5f5f5",
   },
   iconBox: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 15,
   },
   menuText: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
   },
   menuSubText: {
     fontSize: 13,
-    color: '#666',
+    color: "#666",
     marginTop: 2,
   },
   versionText: {
-    textAlign: 'center',
-    color: '#ccc',
+    textAlign: "center",
+    color: "#ccc",
     fontSize: 12,
     marginTop: 30,
   },
@@ -741,45 +878,44 @@ const styles = StyleSheet.create({
     marginTop: 40,
   },
   verifiedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f6ffed',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f6ffed",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     marginLeft: 55,
     marginBottom: 10,
   },
   verifiedText: {
     fontSize: 12,
-    color: '#52c41a',
+    color: "#52c41a",
     marginLeft: 4,
   },
   modalContainer: {
     flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '85%',
-
+    maxHeight: "85%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: "#f0f0f0",
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   editForm: {
     padding: 20,
@@ -789,72 +925,119 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#555',
+    fontWeight: "600",
+    color: "#555",
     marginBottom: 6,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 15,
-    backgroundColor: '#fafafa',
+    backgroundColor: "#fafafa",
   },
   inputHint: {
     fontSize: 12,
-    color: '#888',
+    color: "#888",
     marginTop: 4,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   modalActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: "#f0f0f0",
   },
   modalButton: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   cancelButton: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
     marginRight: 10,
   },
   saveButton: {
-    backgroundColor: '#0056b3',
+    backgroundColor: "#0056b3",
     marginLeft: 10,
   },
   cancelButtonText: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#666',
+    fontWeight: "600",
+    color: "#666",
   },
   saveButtonText: {
     fontSize: 15,
-    fontWeight: '600',
-    color: 'white',
+    fontWeight: "600",
+    color: "white",
   },
-  inputWithIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
+    backgroundColor: "#fafafa",
+    paddingHorizontal: 15,
+    marginBottom: 15,
+    height: 50,
+  },
+  inputField: {
+    flex: 1,
+    fontSize: 15,
+    color: "#333",
+  },
+  primaryBtn: {
+    backgroundColor: "#0056b3",
+    paddingVertical: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  primaryBtnText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  dateInputBtn: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ddd",
     borderRadius: 8,
     paddingHorizontal: 12,
-    backgroundColor: '#fafafa',
-    position: 'relative', // để icon có thể position absolute
+    paddingVertical: 12,
+    backgroundColor: "#fafafa",
   },
-
-  eyeIcon: {
-    position: 'absolute',
-    right: 12,
-  }
-
+  iosDatePickerOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.3)", // Overlay tối màu nhẹ
+    justifyContent: "flex-end",
+    zIndex: 10,
+  },
+  iosModalContent: {
+    backgroundColor: "white",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 20,
+  },
+  iosModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    alignItems: "center",
+  },
 });
 
 export default AccountScreen;

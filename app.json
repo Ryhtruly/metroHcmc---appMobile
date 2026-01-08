@@ -15,7 +15,18 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Cho phép Metro HCMC sử dụng FaceID để đăng nhập nhanh chóng và an toàn."
+        "NSFaceIDUsageDescription": "Cho phép Metro HCMC sử dụng FaceID để đăng nhập nhanh chóng và an toàn.",
+        "LSApplicationQueriesSchemes": [
+          "comgooglemaps",
+          "citymapper",
+          "uber",
+          "lyft",
+          "transit",
+          "waze",
+          "yandexnavi",
+          "moovit",
+          "yandexmaps"
+        ]
       }
     },
     "android": {
@@ -24,11 +35,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.anonymous.metromobile",
-      "permissions": [
-        "USE_BIOMETRIC",
-        "USE_FINGERPRINT",
-        "CAMERA"
-      ]
+      "permissions": ["USE_BIOMETRIC", "USE_FINGERPRINT", "CAMERA"]
     },
     "web": {
       "favicon": "./assets/favicon.png"

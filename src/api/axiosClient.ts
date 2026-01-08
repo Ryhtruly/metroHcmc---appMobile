@@ -10,7 +10,7 @@ export interface ApiResponse {
   ok?: boolean;
 }
 
-const BASE_URL = "http://192.168.100.79:3000/api";
+const BASE_URL = "http://192.168.1.8:3000/api";
 
 const axiosClient = axios.create({
   baseURL: BASE_URL,

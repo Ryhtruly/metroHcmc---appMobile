@@ -4,6 +4,7 @@
     "slug": "metro-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
+    "scheme": "metrohcmc",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -25,9 +26,20 @@
           "waze",
           "yandexnavi",
           "moovit",
+          "yandexmaps",
+          "comgooglemaps",
+          "citymapper",
+          "uber",
+          "lyft",
+          "transit",
+          "waze",
+          "yandexnavi",
+          "moovit",
           "yandexmaps"
-        ]
-      }
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.anonymous.metromobile"
     },
     "android": {
       "adaptiveIcon": {
@@ -35,7 +47,13 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.anonymous.metromobile",
-      "permissions": ["USE_BIOMETRIC", "USE_FINGERPRINT", "CAMERA"]
+      "permissions": [
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT",
+        "CAMERA",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -50,6 +68,12 @@
           "faceIDPermission": "Cho phép Metro HCMC sử dụng FaceID."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b0f7bd33-1eae-4559-b9ea-f25c02e6e391"
+      }
+    }
   }
 }

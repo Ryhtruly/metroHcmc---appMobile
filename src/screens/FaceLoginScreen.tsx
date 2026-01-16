@@ -24,49 +24,39 @@ export default function FaceLoginScreen({ navigation }: any) {
     }, [])
   );
 
-  // FaceLoginScreen.tsx
-
   const handleBiometricLogin = async () => {
     try {
       setIsProcessing(true);
 
-      // 1. Kiểm tra xem máy có hỗ trợ phần cứng không
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      // 2. Kiểm tra xem người dùng đã cài FaceID/Vân tay chưa
-      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-
-      if (!hasHardware || !isEnrolled) {
-        Alert.alert(
-          "Thông báo",
-          "Thiết bị chưa thiết lập FaceID/Vân tay hoặc không hỗ trợ."
-        );
-        setIsProcessing(false);
-        return;
-      }
-
-      // 3. Gọi trình quét
+      // Gọi trình quét hệ thống
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: "Xác thực khuôn mặt để vào Metro",
+        promptMessage: "Xác thực khuôn mặt để vào Metro", // Lời nhắc hiện trên iQOO
+        fallbackLabel: "Dùng mật khẩu",
 
-        // --- SỬA ĐỔI QUAN TRỌNG Ở ĐÂY ---
-        // Đặt là true để KHÔNG hiện mã PIN khi FaceID thất bại
-        disableDeviceFallback: true,
-
-        // Nút hủy trên iOS (Bắt buộc nếu disableDeviceFallback = true)
-        cancelLabel: "Hủy bỏ",
-
-        // Android specific
+        // 🔥 DÀNH CHO ANDROID (iQOO):
+        // Tắt xác nhận giúp máy quét mặt xong là "bắn" vào Home ngay
         requireConfirmation: false,
+
+        // Cho phép dùng vân tay nếu camera không thấy mặt (để tránh treo app)
+        disableDeviceFallback: false,
       });
 
       if (result.success) {
-        // ... Logic đăng nhập giữ nguyên ...
         const savedToken = await SecureStore.getItemAsync("biometric_token");
-        // ...
-      } else {
-        // Xử lý khi user bấm Hủy hoặc không nhận diện được
-        if (result.error !== "user_cancel") {
-          Alert.alert("Lỗi", "Không nhận diện được khuôn mặt.");
+
+        if (savedToken) {
+          // Gọi API Login Biometric
+          const res = await axiosClient.post<any, ApiResponse>(
+            "/auth/login-biometric",
+            {
+              biometricToken: savedToken,
+            }
+          );
+
+          if (res.success && res.token) {
+            await SecureStore.setItemAsync("auth_token", res.token);
+            navigation.replace("Home");
+          }
         }
       }
     } catch (error) {

@@ -22,6 +22,7 @@ import MetroMapScreen from '../screens/MetroMapScreen';
 import RedeemScreen from '../screens/RedeemScreen'; 
 import FaceLoginScreen from '../screens/FaceLoginScreen';
 import FaceRegisterScreen from '../screens/FaceRegisterScreen';
+import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
@@ -61,6 +62,7 @@ export default function AppNavigator() {
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />
           <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+          <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
 
           {/* Màn hình Chính */}
           <Stack.Screen name="Home" component={MainTabs} />

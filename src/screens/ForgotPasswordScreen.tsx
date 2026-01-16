@@ -19,17 +19,10 @@ const ForgotPasswordScreen = ({ navigation }: any) => {
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // kết quả từ API: mật khẩu tạm + token
-    const [result, setResult] = useState<null | {
-        email: string;
-        temp_password: string;
-        token?: string;
-        message?: string;
-    }>(null);
-
     const handleSubmit = async () => {
         const trimmed = email.trim();
 
+        // 1. Validate đầu vào
         if (!trimmed) {
             Alert.alert('Lỗi', 'Vui lòng nhập email');
             return;
@@ -42,36 +35,43 @@ const ForgotPasswordScreen = ({ navigation }: any) => {
 
         try {
             setLoading(true);
-            setResult(null);
 
+            // 2. Gọi API yêu cầu cấp OTP
             const res: any = await axiosClient.post('/auth/forgot-password', {
                 email: trimmed,
             });
 
             if (res.success) {
-                // lưu kết quả để hiển thị
-                setResult({
-                    email: res.email,
-                    temp_password: res.temp_password,
-                    token: res.token,
-                    message: res.message,
-                });
+                // 3. THÀNH CÔNG: Hiển thị OTP (giả lập) và chuyển màn hình
+                // Trong thực tế, OTP sẽ gửi về email, ở đây server trả về để test
+                const otpCode = res.reset_token;
 
-                // Có thể chỉ Alert nhẹ, thông tin chi tiết hiển thị ngay trên màn hình
-                Alert.alert('Thành công', 'Đã cấp mật khẩu tạm. Xem bên dưới.');
+                Alert.alert(
+                    'Đã gửi mã xác thực',
+                    `Mã OTP đã được gửi đến email ${trimmed}.\n(Mã test của bạn là: ${otpCode})`,
+                    [
+                        {
+                            text: 'Nhập mã ngay',
+                            onPress: () => {
+                                // Chuyển sang màn hình ResetPassword, truyền theo email và token giả lập
+                                navigation.navigate('ResetPassword', {
+                                    email: trimmed,
+                                    simulatedToken: otpCode
+                                });
+                            }
+                        }
+                    ]
+                );
             } else {
-                Alert.alert('Lỗi', res.message || 'Không thể xử lý yêu cầu');
+                Alert.alert('Lỗi', res.message || 'Email không tồn tại trong hệ thống');
             }
         } catch (error: any) {
             console.log('Lỗi quên mật khẩu:', error?.response || error);
-            Alert.alert('Lỗi', 'Có lỗi xảy ra, vui lòng thử lại sau');
+            const msg = error.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại sau';
+            Alert.alert('Lỗi', msg);
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleBackToLogin = () => {
-        navigation.navigate('Login');
     };
 
     return (
@@ -95,7 +95,7 @@ const ForgotPasswordScreen = ({ navigation }: any) => {
 
                         <Text style={styles.title}>Quên mật khẩu</Text>
                         <Text style={styles.subtitle}>
-                            Nhập email, hệ thống sẽ cấp mật khẩu tạm để bạn đăng nhập lại
+                            Nhập email để nhận mã xác thực (OTP) đặt lại mật khẩu.
                         </Text>
                     </View>
 
@@ -128,58 +128,16 @@ const ForgotPasswordScreen = ({ navigation }: any) => {
                             {loading ? (
                                 <ActivityIndicator color="#fff" />
                             ) : (
-                                <Text style={styles.primaryButtonText}>Lấy mật khẩu tạm</Text>
+                                <Text style={styles.primaryButtonText}>Lấy mã xác thực (OTP)</Text>
                             )}
                         </TouchableOpacity>
 
-                        {/* Nếu có kết quả, hiển thị cho user */}
-                        {result && (
-                            <View style={styles.resultCard}>
-                                <Text style={styles.resultTitle}>Thông tin khôi phục</Text>
-
-                                {result.message && (
-                                    <Text style={styles.resultMessage}>{result.message}</Text>
-                                )}
-
-                                <View style={styles.resultRow}>
-                                    <Text style={styles.resultLabel}>Email:</Text>
-                                    <Text style={styles.resultValue}>{result.email}</Text>
-                                </View>
-
-                                <View style={styles.resultRow}>
-                                    <Text style={styles.resultLabel}>Mật khẩu tạm:</Text>
-                                    <Text style={[styles.resultValue, { fontWeight: '700' }]} selectable={true} >
-                                        {result.temp_password}
-                                    </Text>
-                                </View>
-
-                                {/* Token chỉ để debug / dev, có thể ẩn nếu không cần */}
-                                {result.token && (
-                                    <View style={styles.resultRow}>
-                                        <Text style={styles.resultLabel}>Token:</Text>
-                                        <Text
-                                            style={[styles.resultValue, { fontSize: 11 }]}
-                                            numberOfLines={2}
-                                        >
-                                            {result.token}
-                                        </Text>
-                                    </View>
-                                )}
-
-                                <Text style={styles.resultNote}>
-                                    Hãy dùng email và mật khẩu tạm này để đăng nhập, sau đó đổi lại mật khẩu trong phần cài đặt.
-                                </Text>
-
-                                <TouchableOpacity
-                                    style={styles.secondaryButton}
-                                    onPress={handleBackToLogin}
-                                >
-                                    <Text style={styles.secondaryButtonText}>
-                                        Quay lại màn đăng nhập
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-                        )}
+                        <TouchableOpacity
+                            style={styles.secondaryButton}
+                            onPress={() => navigation.navigate('Login')}
+                        >
+                            <Text style={styles.secondaryButtonText}>Quay lại đăng nhập</Text>
+                        </TouchableOpacity>
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
@@ -220,7 +178,7 @@ const styles = StyleSheet.create({
     card: {
         backgroundColor: '#fff',
         borderRadius: 18,
-        padding: 18,
+        padding: 20,
         shadowColor: '#000',
         shadowOpacity: 0.1,
         shadowRadius: 10,
@@ -240,78 +198,40 @@ const styles = StyleSheet.create({
         borderColor: '#cbd5e1',
         backgroundColor: '#f8fafc',
         paddingHorizontal: 10,
+        height: 50,
     },
     inputIcon: {
-        marginRight: 6,
+        marginRight: 10,
     },
     input: {
         flex: 1,
-        paddingVertical: 8,
+        height: '100%',
         fontSize: 14,
         color: '#0f172a',
     },
     primaryButton: {
-        marginTop: 18,
+        marginTop: 20,
         backgroundColor: '#0056b3',
         paddingVertical: 12,
         borderRadius: 10,
         alignItems: 'center',
+        height: 50,
+        justifyContent: 'center',
     },
     primaryButtonText: {
         color: '#fff',
         fontSize: 15,
         fontWeight: '600',
     },
-    resultCard: {
-        marginTop: 18,
-        padding: 12,
-        borderRadius: 12,
-        backgroundColor: '#F1F5F9',
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-    },
-    resultTitle: {
-        fontSize: 15,
-        fontWeight: '700',
-        marginBottom: 6,
-        color: '#0f172a',
-    },
-    resultMessage: {
-        fontSize: 13,
-        color: '#4b5563',
-        marginBottom: 8,
-    },
-    resultRow: {
-        flexDirection: 'row',
-        marginBottom: 4,
-    },
-    resultLabel: {
-        fontSize: 13,
-        color: '#6b7280',
-        width: 100,
-    },
-    resultValue: {
-        fontSize: 13,
-        color: '#0f172a',
-        flex: 1,
-    },
-    resultNote: {
-        marginTop: 8,
-        fontSize: 12,
-        color: '#6b7280',
-    },
     secondaryButton: {
-        marginTop: 10,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#0056b3',
-        paddingVertical: 8,
+        marginTop: 15,
         alignItems: 'center',
+        paddingVertical: 10,
     },
     secondaryButtonText: {
-        color: '#0056b3',
+        color: '#64748b',
         fontSize: 14,
-        fontWeight: '600',
+        fontWeight: '500',
     },
 });
 
